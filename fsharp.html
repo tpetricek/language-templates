@@ -1,0 +1,38 @@
+<section name="fsharp">
+  <p class="ioDesc">In</p>
+  <pre class="incoming brush:fsharp"> <!-- Is 'fsharp' going to work here? -->
+#r "FSharp.PowerPack.dll"
+open System.IO
+open System.Net
+open System.Text
+<% if @contentType is "application/x-www-form-urlencoded": %>open System.Web
+<% end %>open Microsoft.FSharp.Control.WebExtensions
+
+<% if @contentType is "application/json": %>
+// Add POST data to a HTTP POST request
+let addPostData (req:WebRequest) (data:string) =
+  let postBytes = Encoding.ASCII.GetBytes(data)
+  req.ContentLength <- int64 postBytes.Length
+  use reqStream = req.GetRequestStream() 
+  reqStream.Write(postBytes, 0, postBytes.Length)
+<% end %>
+
+<% if @body and @contentType is "application/x-www-form-urlencoded": %>
+let data = HttpUtility.UrlEncode <%= @helpers.escape @body.join('') %>
+<% else if @body: %>
+let data = <%= @helpers.escape @body.join('') %>
+<% end %>
+
+async {
+  let req = HttpWebRequest.Create
+              ( "<%= @apiUrl %><%= @url %>", 
+                Method = "<%= @method %>", ContentType = "<%= @contentType %>" )
+<% if @body and @contentType is "application/json": %>
+  addPostData req data
+<% end %>  use! resp = req.AsyncGetResponse()
+  use str = new StreamReader(resp.GetResponseStream())
+  let! body = str.AsyncReadToEnd() 
+  printfn "%s" body }
+|> Async.Start
+</pre>
+</section>
